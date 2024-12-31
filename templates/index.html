@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evaluasi Model SVM</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='index.css') }}"
+    />
+  </head>
+  <body>
+    <div class="sidebar">
+      <h4 class="text-center">Sentimen Pinjol</h4>
+      <br />
+      <ul class="nav flex-column">
+        {% for dataset_key, dataset_name in datasets.items() %}
+        <li class="nav-item">
+          <a class="nav-link center" href="/?dataset={{ dataset_key }}">
+            {% if dataset_key == 'databersih' %} AdaKami {% elif dataset_key ==
+            'dataakulaku' %} AkuLaku {% elif dataset_key == 'dataeasycash' %}
+            EasyCash {% endif %}
+          </a>
+          <hr />
+        </li>
+        {% endfor %}
+      </ul>
+      {% if 'logged_in' in session %}
+      <a class="nav-link center position-absolute fixed-bottom" href="/login">
+        <i class="bi bi-person-circle"></i>
+      </a>
+      {% else %}
+      <a class="nav-link center position-absolute fixed-bottom" href="/admins">
+        <i class="bi bi-person-circle"></i>
+      </a>
+      {% endif %}
+    </div>
+    <div class="content">
+      <div class="center">
+        <h1 class="title">{{ page_titles }}</h1>
+        <hr />
+      </div>
+      <br />
+      <div class="chart-container" style="width: 40%; margin: auto">
+        <canvas id="sentimentChart"></canvas>
+      </div>
+      <br />
+      <div class="center">
+        <h4>Sentiment Distribution</h4>
+        <canvas id="sentimentDistributionChart"></canvas>
+      </div>
+      <div id="reviews-container" class="center">
+        <h2>Ulasan</h2>
+        <hr />
+        <table class="reviews-table table-hover table-light">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Ulasan</th>
+            </tr>
+          </thead>
+          <tbody id="reviews-content"></tbody>
+        </table>
+
+        <nav aria-label="Page navigation example">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" id="prev-page">
+              <a class="page-link" href="#">Previous</a>
+            </li>
+            <li class="page-item" id="next-page">
+              <a class="page-link" href="#">Next</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    <script>
+      const sentimentData = {
+              labels: ['Ulasan Positif', 'Ulasan Negatif'],
+              datasets: [{
+                  data: [{{ positive_percentage }}, {{ negative_percentage }}],
+                  backgroundColor: ['#43be25', '#f94447'],
+                  borderwidth:1
+              }],
+          };
+
+      const sentimentOptions = {
+        responsive: true,
+        plugins: {
+          datalabels: {
+            color: "#fff",
+            display: true,
+            // align: 'center',
+            // anchor: 'center',
+            formatter: function (value, context) {
+              return value.toFixed(0) + "%";
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return context.label + ": " + context.parsed.toFixed(2) + "%";
+              },
+            },
+          },
+        },
+      };
+
+      const sentimentChart = new Chart(
+        document.getElementById("sentimentChart"),
+        {
+          type: "doughnut",
+          data: sentimentData,
+          options: sentimentOptions,
+          plugins: [ChartDataLabels]
+        }
+      );
+
+      let currentPage = 1;
+      let currentLabel = null;
+      const reviewsContainer = document.getElementById("reviews-container");
+      const reviewsContent = document.getElementById("reviews-content");
+
+      sentimentChart.canvas.onclick = (event) => {
+        const activePoints = sentimentChart.getElementsAtEventForMode(
+          event,
+          "nearest",
+          { intersect: true },
+          true
+        );
+        if (activePoints.length) {
+          const firstPoint = activePoints[0];
+          const label = sentimentChart.data.labels[firstPoint.index];
+          currentLabel = label === "Ulasan Positif" ? "positif" : "negatif";
+          currentPage = 1;
+          fetchReviews(currentLabel, currentPage);
+        }
+      };
+
+      function fetchReviews(label, page) {
+        fetch(
+          `/reviews?label=${label}&page=${page}&dataset={{ selected_dataset }}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            reviewsContent.innerHTML = data.reviews
+              .map((review, index) => ` <tr>
+                            <td>${(page - 1) * 5 + index + 1}</td>
+                            <td>${review}</td>
+                        </tr>`)
+              .join("");
+            document
+              .getElementById("prev-page")
+              .classList.toggle("disabled", page === 1);
+            document
+              .getElementById("next-page")
+              .classList.toggle("disabled", data.reviews.length < 5);
+          });
+      }
+
+      document.getElementById("prev-page").onclick = (event) => {
+        event.preventDefault();
+        if (currentPage > 1) {
+          currentPage--;
+          fetchReviews(currentLabel, currentPage);
+        }
+      };
+
+      document.getElementById("next-page").onclick = (event) => {
+        event.preventDefault();
+        currentPage++;
+        fetchReviews(currentLabel, currentPage);
+      };
+    </script>
+  </body>
+</html>

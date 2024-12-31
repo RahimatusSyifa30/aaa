@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evaluasi Model SVM</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='index.css') }}"
+    />
+  </head>
+  <body>
+    <div class="sidebar">
+      <h4 class="text-center">Sentimen Pinjol</h4>
+      <br />
+      <ul class="nav flex-column">
+        {% for dataset_key, dataset_name in datasets.items() %}
+        <li class="nav-item">
+          <a class="nav-link center" href="/admins?dataset={{ dataset_key }}">
+            {% if dataset_key == 'databersih' %} AdaKami {% elif dataset_key ==
+            'dataakulaku' %} AkuLaku {% elif dataset_key == 'dataeasycash' %}
+            EasyCash {% endif %}
+          </a>
+          <hr />
+        </li>
+        {% endfor %}
+      </ul>
+      <a class="nav-link center position-absolute fixed-bottom" href="/">
+        <i class="bi bi-arrow-left-circle-fill"></i
+      ></a>
+    </div>
+    <div class="content">
+      <div class="center">
+        <h2 class="title">{{ page_title }}</h2>
+        <hr />
+      </div>
+      <h4 class="mb-4">Hasil Evaluasi Model SVM</h4>
+      <form method="POST" class="mb-4" action="/admins">
+        <div class="">
+          <div class="d-flex ">
+            <div class="form-group inp p-3">
+              <label for="gamma">Gamma:</label>
+              <input type="text" class="form-control" id="gamma" name="gamma" value="{{ gamma }}">
+            </div>
+            <div class="form-group inp p-3">
+              <label for="lambd">Lambda:</label>
+              <input type="text" class="form-control" id="lambd" name="lambd" value="{{ lambd }}">
+            </div>
+            <div class="form-group inp p-3">
+              <label for="C">C :</label>
+                    <input
+                  type="text"
+                  class="form-control"
+                  id="C"
+                  name="C"
+                  value="{{ C }}"
+                />
+            </div>
+            <div class="form-group inp p-3">
+              <label for="epsilon">Epsilon:</label>
+              <input type="text" class="form-control" id="epsilon" name="epsilon" value="{{ epsilon }}">
+            </div>
+          </div>
+        <button type="submit" class="btn btn-primary" style="margin-left: 10px;">Submit</button>
+      </form>
+      <hr>
+      <div class="d-flex justify-content-around mt-5">
+        <div>
+          <h4>Evaluation Metrics</h4>
+          <p>Accuracy: {{ '%.2f' % mean_accuracy }}</p>
+          <p>Precision: {{ '%.2f' % mean_precision }}</p>
+          <p>Recall: {{ '%.2f' % mean_recall }}</p>
+          <p>F1-Score: {{ '%.2f' % mean_f1 }}</p>
+        </div>
+      </div>
+      <hr>
+      <hr>
+      <form id="classificationForm">
+        <div class="form-group">
+            <label for="review">Masukkan Ulasan Baru :</label>
+            <textarea class="form-control" id="review" name="review" rows="3"></textarea>
+        </div>
+        <!-- <input type="hidden" name="dataset" value="{{ selected_dataset }}"> -->
+        <button type="submit" class="btn btn-primary">Klasifikasikan</button>
+    </form>
+    <br>
+    <div id="result">
+        {% if sentiment %}
+        <h2>Hasil Klasifikasi: {{ sentiment }}</h2>
+        {% endif %}
+    </div>
+    <script>
+      $(document).ready(function() {
+          $('#classificationForm').on('submit', function(event) {
+              event.preventDefault();
+              $('#result').html('');
+              $.ajax({
+                  url: '/classify',
+                  method: 'POST',
+                  data: $(this).serialize(),
+                  success: function(response) {
+                      $('#result').html('<h3>Hasil Klasifikasi: ' + response.sentiment + '</h3>');
+                  }
+              });
+          });
+      });
+      </script>      
+    </div>
+  </body>
+</html>
